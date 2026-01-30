@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Lesson, Character } from '../types';
 
 interface GameMapProps {
@@ -11,11 +11,17 @@ interface GameMapProps {
 
 const SagaMap: React.FC<GameMapProps> = ({ lesson, lessons, onCharClick, onLessonSelect }) => {
   const [showSelector, setShowSelector] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(true);
 
   // Check if all characters in the current lesson are unlocked
   const isLessonComplete = useMemo(() => {
     return lesson.characters.every(c => c.unlocked);
   }, [lesson]);
+
+  // Reset completion modal state when lesson changes
+  useEffect(() => {
+    setShowCompletionModal(true);
+  }, [lesson.id]);
 
   // Find the next lesson if current is complete
   const nextLesson = useMemo(() => {
@@ -99,14 +105,21 @@ const SagaMap: React.FC<GameMapProps> = ({ lesson, lessons, onCharClick, onLesso
               <div className="flex flex-col items-center">
                 <button
                   onClick={() => isClickable && onCharClick(step)}
-                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-3xl sm:text-4xl font-black transition-all duration-300 shadow-[0_6px_0_rgb(0,0,0,0.15)] active:translate-y-1.5 active:shadow-none ${isUnlocked ? 'bg-gradient-to-br from-yellow-300 to-orange-500 border-4 border-white text-white' : isNext ? 'bg-white border-4 border-yellow-400 text-yellow-600 animate-bounce-gentle ring-4 ring-yellow-400/20 shadow-xl' : 'bg-white/60 border-4 border-white text-gray-400 opacity-80 cursor-not-allowed'}`}
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-3xl sm:text-4xl font-black transition-all duration-300 shadow-[0_6px_0_rgb(0,0,0,0.15)] active:translate-y-1.5 active:shadow-none ${isUnlocked ? 'bg-gradient-to-br from-yellow-300 to-orange-500 border-4 border-white text-white shadow-lg' : isNext ? 'bg-white border-4 border-yellow-400 text-yellow-600 animate-bounce-gentle ring-4 ring-yellow-400/20 shadow-xl' : 'bg-white/60 border-4 border-white text-gray-400 opacity-80 cursor-not-allowed'}`}
                 >
-                  <span className={isUnlocked ? 'opacity-90 scale-75' : 'scale-100'}>{isUnlocked ? '⭐' : step.char}</span>
+                  <span className={isUnlocked ? 'scale-90 flex flex-col items-center' : 'scale-100'}>
+                    {isUnlocked ? (
+                      <>
+                        <span className="text-xl sm:text-2xl leading-none">{step.char}</span>
+                        <span className="text-lg sm:text-xl -mt-1">⭐</span>
+                      </>
+                    ) : step.char}
+                  </span>
                   {isNext && <div className="absolute -top-12 left-1/2 -translate-x-1/2 text-4xl sm:text-5xl drop-shadow-lg z-30 animate-bounce">👧</div>}
                   {!isClickable && <div className="absolute inset-0 flex items-center justify-center bg-black/5 rounded-full"><span className="text-lg opacity-40">🔒</span></div>}
                 </button>
                 <div className={`mt-2 px-3 py-1 rounded-full text-xs sm:text-sm font-black transition-all shadow-md whitespace-nowrap ${isClickable ? 'bg-white text-gray-700' : 'bg-white/40 text-gray-400'}`}>
-                   {isUnlocked ? '學習完成' : step.char}
+                   {isUnlocked ? `${step.char} (已學)` : step.char}
                 </div>
               </div>
             </div>
@@ -115,9 +128,15 @@ const SagaMap: React.FC<GameMapProps> = ({ lesson, lessons, onCharClick, onLesso
       </div>
 
       {/* Next Adventure Overlay */}
-      {isLessonComplete && nextLesson && (
-        <div className="absolute bottom-24 right-6 sm:right-10 z-50 animate-in slide-in-from-bottom-10">
-           <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border-4 border-orange-400 shadow-2xl flex flex-col items-center space-y-4 w-72">
+      {isLessonComplete && nextLesson && showCompletionModal && (
+        <div className="absolute bottom-24 right-6 sm:right-10 z-50 animate-in slide-in-from-bottom-10 duration-500">
+           <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border-4 border-orange-400 shadow-2xl flex flex-col items-center space-y-4 w-72 relative">
+              <button 
+                onClick={() => setShowCompletionModal(false)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-bold hover:bg-gray-200 transition-colors"
+              >
+                ✕
+              </button>
               <div className="text-5xl">🏆</div>
               <h3 className="text-xl font-black text-gray-800">主題已完成！</h3>
               <p className="text-sm text-gray-500 font-bold text-center">太棒了！你想開始下一個冒險「{nextLesson.title}」嗎？</p>

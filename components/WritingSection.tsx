@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Character, StrokePoint } from '../types';
-import { GoogleGenAI, Type } from "@google/genai";
 
 interface WritingSectionProps {
   character: Character;
@@ -161,53 +160,75 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
     }
   };
 
+  /**
+   * Deterministic Evaluation Logic:
+   * 1. Render the target character as a "mask" on a hidden canvas.
+   * 2. Compare the pixels of the user's drawing with the mask.
+   * 3. Calculate coverage percentage.
+   */
   const triggerEvaluation = async () => {
     if (!canvasRef.current) return;
     setIsVerifying(true);
 
-    try {
-      const base64Image = canvasRef.current.toDataURL('image/png').split(',')[1];
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [
-          {
-            parts: [
-              { text: `You are a friendly teacher. Look at this handwritten Chinese character. Does it look like the traditional Chinese character "${character.char}"? Even if it is messy (written by a kid), is it recognizable? Answer in JSON format with "score" (0-10) and "isPass" (boolean).` },
-              { inlineData: { mimeType: 'image/png', data: base64Image } }
-            ]
-          }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              score: { type: Type.NUMBER },
-              isPass: { type: Type.BOOLEAN },
-            },
-            required: ["score", "isPass"]
-          }
-        }
-      });
+    // Short delay to show the "Verifying" state for UX
+    await new Promise(r => setTimeout(r, 600));
 
-      const result = JSON.parse(response.text || '{}');
-      
-      if (result.isPass || result.score >= 6) {
-        setIsSuccess(true);
-        speak();
-      } else {
-        setPromptMsg("再試一次看看？你可以寫得更像「" + character.char + "」喔！");
-        setTimeout(() => setPromptMsg(null), 3000);
+    const canvas = canvasRef.current;
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Create a Reference Mask Canvas
+    const refCanvas = document.createElement('canvas');
+    refCanvas.width = width;
+    refCanvas.height = height;
+    const rCtx = refCanvas.getContext('2d', { willReadFrequently: true })!;
+    
+    // Draw the character in the same spot as the guide
+    rCtx.fillStyle = 'black';
+    rCtx.textAlign = 'center';
+    rCtx.textBaseline = 'middle';
+    // Use a bold font and a slightly larger size to give kids some tolerance
+    rCtx.font = `normal 200px "Noto Sans TC", sans-serif`;
+    rCtx.fillText(character.char, width / 2, height / 2);
+    
+    // Create an expanded "Hit Zone" by adding a slight stroke
+    rCtx.strokeStyle = 'black';
+    rCtx.lineWidth = 15; 
+    rCtx.strokeText(character.char, width / 2, height / 2);
+
+    // Get Pixel Data
+    const refData = rCtx.getImageData(0, 0, width, height).data;
+    const userCtx = canvas.getContext('2d', { willReadFrequently: true })!;
+    const userData = userCtx.getImageData(0, 0, width, height).data;
+
+    let targetPixelCount = 0;
+    let hitPixelCount = 0;
+
+    // Iterate through pixels (step by 4 for performance as we only need alpha/black)
+    for (let i = 3; i < refData.length; i += 4) {
+      const isTarget = refData[i] > 10; // If mask has alpha
+      if (isTarget) {
+        targetPixelCount++;
+        // Check if user has drawn in this vicinity
+        if (userData[i] > 10) {
+          hitPixelCount++;
+        }
       }
-    } catch (error) {
-      console.error("Evaluation failed", error);
+    }
+
+    const coverage = hitPixelCount / (targetPixelCount || 1);
+    
+    // Threshold: 45% coverage is usually enough for a recognizable child's tracing
+    if (coverage > 0.45) {
       setIsSuccess(true);
       speak();
-    } finally {
-      setIsVerifying(false);
+    } else {
+      setPromptMsg("哎呀，好像還差一點點喔！再努力寫滿一點吧！💪");
+      setTimeout(() => setPromptMsg(null), 3000);
+      // Give them a chance to keep drawing rather than clearing
     }
+    
+    setIsVerifying(false);
   };
 
   const playSingleDemoStroke = async (index: number) => {
@@ -282,8 +303,8 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
       {isSuccess && (
         <div className="absolute inset-0 z-[100] bg-white/95 flex flex-col items-center justify-center p-6 animate-in zoom-in duration-300">
            <div className="text-8xl mb-4 animate-bounce">🌈✨🏆</div>
-           <h2 className="text-4xl font-black rainbow-text mb-2">好棒呀！</h2>
-           <p className="text-xl font-bold text-gray-600 mb-8 text-center">你學會寫「{character.char}」啦！</p>
+           <h2 className="text-4xl font-black rainbow-text mb-2 text-center">好棒呀！</h2>
+           <p className="text-xl font-bold text-gray-600 mb-8 text-center px-4">你學會寫「{character.char}」啦！</p>
            <button 
              onClick={onComplete}
              className="px-12 py-4 bg-gradient-to-r from-pink-400 to-orange-400 text-white rounded-[2rem] font-black text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all border-4 border-white"
@@ -295,64 +316,64 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
 
       {/* Floating Prompt Message */}
       {promptMsg && (
-        <div className="absolute top-36 z-50 pointer-events-none w-full flex justify-center px-4">
-          <div className="bg-pink-500 text-white px-6 py-3 rounded-2xl font-black shadow-2xl border-4 border-white animate-bounce text-center max-w-xs">
+        <div className="absolute top-28 z-50 pointer-events-none w-full flex justify-center px-4">
+          <div className="bg-pink-500 text-white px-6 py-2 rounded-2xl font-black shadow-2xl border-4 border-white animate-bounce text-center max-w-xs text-sm">
             {promptMsg}
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="w-full flex flex-col items-center px-4 pt-4 shrink-0">
-        <div className="w-full flex justify-between items-center">
-           <button onClick={onBack} className="p-3 bg-white border-4 border-[#ffedf0] rounded-2xl shadow-sm hover:bg-gray-50 transition-all active:scale-90">
-             <span className="text-pink-500 text-xl">⬅️</span>
+      {/* Simplified Mobile Header */}
+      <div className="w-full flex flex-col items-center px-4 pt-3 shrink-0">
+        <div className="w-full flex justify-between items-center mb-2">
+           <button onClick={onBack} className="w-10 h-10 bg-white border-4 border-[#ffedf0] rounded-xl shadow-sm flex items-center justify-center hover:bg-gray-50 active:scale-90">
+             <span className="text-pink-500 text-lg">⬅️</span>
            </button>
            
-           <div className="flex space-x-2">
+           <div className="flex space-x-1">
              {mode !== 'RECORDING' ? (
                <>
                  <button 
                    onClick={() => { clearCanvas(true); setMode('RECORDING'); }}
-                   className="px-4 py-2 border-b-4 rounded-xl font-black text-sm shadow-md transition-all bg-white border-gray-100 text-gray-500"
+                   className="px-3 py-1.5 border-b-2 rounded-lg font-black text-[10px] shadow-sm bg-white border-gray-100 text-gray-500"
                  >
                    👩‍🏫 大人錄製
                  </button>
                  <button 
                    onClick={startPracticing}
                    disabled={recordedStrokes.length === 0}
-                   className={`px-4 py-2 border-b-4 rounded-xl font-black text-sm shadow-md transition-all ${mode === 'PRACTICING' ? 'bg-pink-400 border-pink-600 text-white scale-105' : 'bg-white border-gray-100 text-gray-400 disabled:opacity-30'}`}
+                   className={`px-3 py-1.5 border-b-2 rounded-lg font-black text-[10px] shadow-sm transition-all ${mode === 'PRACTICING' ? 'bg-pink-400 border-pink-600 text-white scale-105' : 'bg-white border-gray-100 text-gray-300 disabled:opacity-30'}`}
                  >
                    👧 孩子跟寫
                  </button>
                </>
              ) : (
-               <div className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-black text-sm flex items-center shadow-inner">
+               <div className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-black text-[10px] flex items-center shadow-inner">
                  正在錄製第 {recordedStrokes.length + 1} 筆...
                </div>
              )}
            </div>
         </div>
         
-        <div className="flex flex-col items-center mt-2">
-           <h2 className="text-6xl font-black text-gray-800 leading-none">{character.char}</h2>
-           <div className="flex items-center space-x-2 mt-1">
-              <span className="text-2xl font-black text-[#f06292]">{lang === 'yue' ? character.jyutping : character.pinyin}</span>
-              <button onClick={speak} className="text-lg hover:scale-110 transition-all filter drop-shadow-sm">🔊</button>
+        <div className="flex flex-col items-center">
+           <h2 className="text-5xl font-black text-gray-800 leading-none">{character.char}</h2>
+           <div className="flex items-center space-x-1 mt-1">
+              <span className="text-xl font-black text-[#f06292]">{lang === 'yue' ? character.jyutping : character.pinyin}</span>
+              <button onClick={speak} className="text-base hover:scale-110 active:scale-90 p-1">🔊</button>
            </div>
         </div>
       </div>
 
-      {/* Grid Area */}
-      <div className="flex-1 w-full max-w-[400px] flex flex-col items-center justify-center p-6 relative">
+      {/* Grid Area - Flexible for mobile heights */}
+      <div className="flex-1 w-full max-w-[400px] flex items-center justify-center p-4 relative overflow-hidden">
         <div 
           ref={containerRef} 
-          className="chinese-grid relative w-full aspect-square bg-white rounded-[2rem] border-[10px] border-[#ffcfd2] shadow-2xl overflow-hidden"
+          className="chinese-grid relative w-full aspect-square max-h-full bg-white rounded-[2rem] border-[8px] border-[#ffcfd2] shadow-xl overflow-hidden"
           style={{ touchAction: 'none' }}
         >
           {/* Faint Guide */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.05]">
-            <span className="text-[240px] font-normal leading-none" style={{ fontFamily: 'Noto Sans TC' }}>{character.char}</span>
+            <span className="text-[200px] font-normal leading-none" style={{ fontFamily: 'Noto Sans TC' }}>{character.char}</span>
           </div>
 
           <canvas ref={demoCanvasRef} className="absolute inset-0 z-10 pointer-events-none opacity-80" />
@@ -363,7 +384,7 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
             className="absolute inset-0 z-20 cursor-crosshair touch-none"
           />
 
-          {/* Red Stroke Sequence Numbers - LAYERED SVG FOR CLEAN OUTLINE */}
+          {/* Red Stroke Sequence Numbers */}
           <div className="absolute inset-0 z-40 pointer-events-none">
             <svg className="w-full h-full" viewBox="0 0 100 100">
               {(() => {
@@ -384,25 +405,23 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
 
                 return (
                   <g className="animate-in fade-in zoom-in duration-200">
-                    {/* Background Stroke (The Outline) */}
                     <text 
                       x={textX} y={textY} 
                       fill="white" 
                       stroke="white"
-                      strokeWidth="3.5"
+                      strokeWidth="3"
                       strokeLinejoin="round"
-                      fontSize="11" 
+                      fontSize="10" 
                       fontWeight="900" 
                       textAnchor="middle"
                       style={{ fontFamily: 'Fredoka' }}
                     >
                       {activeIdx + 1}
                     </text>
-                    {/* Foreground Fill */}
                     <text 
                       x={textX} y={textY} 
                       fill="#ef4444" 
-                      fontSize="11" 
+                      fontSize="10" 
                       fontWeight="900" 
                       textAnchor="middle"
                       style={{ fontFamily: 'Fredoka' }}
@@ -417,47 +436,47 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
 
           {isVerifying && (
              <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-               <div className="flex flex-col items-center bg-white p-6 rounded-3xl shadow-2xl border-4 border-pink-400">
-                 <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                 <span className="font-black text-pink-500 text-lg animate-pulse">正在批改中...</span>
+               <div className="flex flex-col items-center bg-white p-4 rounded-3xl shadow-lg border-2 border-pink-400">
+                 <span className="text-4xl mb-2 animate-bounce">🧐</span>
+                 <span className="font-black text-pink-500 text-sm animate-pulse">老師檢查中...</span>
                </div>
              </div>
           )}
         </div>
       </div>
 
-      {/* Footer Controls */}
-      <div className="w-full max-w-md px-6 pb-8 flex flex-col space-y-3 shrink-0 h-28">
+      {/* Footer Controls - Compact for Mobile */}
+      <div className="w-full max-w-md px-4 pb-6 flex flex-col space-y-2 shrink-0">
         {mode === 'RECORDING' ? (
-          <div className="flex space-x-3 w-full h-full animate-in slide-in-from-bottom-2">
+          <div className="flex space-x-2 w-full h-14">
             <button 
               onClick={() => { clearCanvas(true); setMode('FREE'); }}
-              className="flex-1 py-4 bg-white border-b-8 border-gray-200 text-gray-400 rounded-3xl font-black text-xl active:translate-y-1 transition-all"
+              className="flex-1 py-3 bg-white border-b-4 border-gray-200 text-gray-400 rounded-2xl font-black text-lg active:translate-y-1 transition-all"
             >
               ❌ 取消
             </button>
             <button 
               onClick={startPracticing}
               disabled={recordedStrokes.length === 0}
-              className="flex-2 py-4 bg-blue-500 border-b-8 border-blue-700 text-white rounded-3xl font-black text-xl active:translate-y-1 transition-all disabled:opacity-50 shadow-lg flex-[2_2_0%]"
+              className="flex-[2_2_0%] py-3 bg-blue-500 border-b-4 border-blue-700 text-white rounded-2xl font-black text-lg active:translate-y-1 transition-all disabled:opacity-50 shadow-md"
             >
               ✅ 錄好啦！
             </button>
           </div>
         ) : (
-          <div className="flex space-x-3 w-full h-full">
+          <div className="flex space-x-2 w-full h-14">
             {mode === 'FREE' && hasStarted && !isSuccess ? (
                <button 
                  onClick={triggerEvaluation}
                  disabled={isVerifying}
-                 className="flex-1 py-4 bg-gradient-to-r from-green-400 to-emerald-500 border-b-8 border-emerald-700 text-white rounded-3xl font-black text-xl shadow-lg active:translate-y-1 transition-all flex items-center justify-center"
+                 className="flex-1 py-3 bg-gradient-to-r from-green-400 to-emerald-500 border-b-4 border-emerald-700 text-white rounded-2xl font-black text-lg shadow-md active:translate-y-1 transition-all flex items-center justify-center"
                >
-                 {isVerifying ? '批改中...' : '✅ 我寫好了！'}
+                 {isVerifying ? '檢查中...' : '✅ 我寫好了！'}
                </button>
             ) : (
               <button 
                 onClick={() => { setMode('FREE'); clearCanvas(false); }}
-                className={`flex-1 py-4 border-b-8 rounded-3xl font-black text-xl transition-all active:translate-y-1 shadow-lg ${mode === 'FREE' ? 'bg-orange-400 border-orange-600 text-white' : 'bg-white border-gray-100 text-gray-400'}`}
+                className={`flex-1 py-3 border-b-4 rounded-2xl font-black text-lg transition-all active:translate-y-1 shadow-md ${mode === 'FREE' ? 'bg-orange-400 border-orange-600 text-white' : 'bg-white border-gray-100 text-gray-400'}`}
               >
                 🎨 自由寫
               </button>
@@ -465,7 +484,7 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
             
             <button 
               onClick={() => clearCanvas(mode !== 'PRACTICING')}
-              className="flex-1 py-4 bg-[#e9ecf3] border-b-8 border-[#cbd5e1] rounded-3xl font-black text-xl text-gray-500 active:translate-y-1 transition-all shadow-lg"
+              className="flex-1 py-3 bg-[#e9ecf3] border-b-4 border-[#cbd5e1] rounded-2xl font-black text-lg text-gray-500 active:translate-y-1 transition-all shadow-md"
             >
               🧹 清除
             </button>
@@ -473,7 +492,7 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
             {mode === 'PRACTICING' && (
               <button 
                 onClick={() => playSingleDemoStroke(currentStrokeIndex)}
-                className="p-4 bg-pink-100 border-b-8 border-pink-300 text-pink-500 rounded-3xl shadow-lg active:translate-y-1 transition-all"
+                className="w-14 h-14 bg-pink-100 border-b-4 border-pink-300 text-pink-500 rounded-2xl shadow-md active:translate-y-1 transition-all flex items-center justify-center"
               >
                 🔄
               </button>
