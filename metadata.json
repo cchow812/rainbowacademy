@@ -1,0 +1,7 @@
+{
+  "name": "Rainbow Brush Academy",
+  "description": "A fun, interactive app for kids to learn Traditional Chinese characters through tracing, storytelling, and game-like progression.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

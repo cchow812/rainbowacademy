@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rainbow Brush Academy | 彩虹毛筆學堂</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-main: 'Fredoka', 'M PLUS Rounded 1c', sans-serif;
+        }
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: var(--font-main);
+            background-color: #fff9f0;
+        }
+        #root {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        h1, h2, h3, button {
+            font-family: 'Fredoka', 'M PLUS Rounded 1c', sans-serif;
+        }
+        /* Traditional Rice Grid (米字格) */
+        .chinese-grid {
+            position: relative;
+            background-color: white;
+            border: 8px solid #ffcfd2;
+            box-sizing: border-box;
+            border-radius: 2rem;
+        }
+        .chinese-grid::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(to right, transparent calc(50% - 1.5px), #fecaca calc(50% - 1.5px), #fecaca calc(50% + 1.5px), transparent calc(50% + 1.5px)),
+                linear-gradient(to bottom, transparent calc(50% - 1.5px), #fecaca calc(50% - 1.5px), #fecaca calc(50% + 1.5px), transparent calc(50% + 1.5px));
+            pointer-events: none;
+            opacity: 0.6;
+            z-index: 1;
+        }
+        .chinese-grid::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(45deg, transparent calc(50% - 1px), #fecaca calc(50% - 1px), #fecaca calc(50% + 1px), transparent calc(50% + 1px)),
+                linear-gradient(-45deg, transparent calc(50% - 1px), #fecaca calc(50% - 1px), #fecaca calc(50% + 1px), transparent calc(50% + 1px));
+            background-size: 100% 100%;
+            pointer-events: none;
+            opacity: 0.3;
+            z-index: 1;
+        }
+        @keyframes bounce-gentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-bounce-gentle {
+            animation: bounce-gentle 2s infinite ease-in-out;
+        }
+        .rainbow-text {
+            background: linear-gradient(to right, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
