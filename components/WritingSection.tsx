@@ -326,8 +326,8 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
       {/* Simplified Mobile Header */}
       <div className="w-full flex flex-col items-center px-4 pt-3 shrink-0">
         <div className="w-full flex justify-between items-center mb-2">
-           <button onClick={onBack} className="w-10 h-10 bg-white border-4 border-[#ffedf0] rounded-xl shadow-sm flex items-center justify-center hover:bg-gray-50 active:scale-90">
-             <span className="text-pink-500 text-lg">⬅️</span>
+           <button onClick={onBack} className="w-12 h-12 bg-white border-4 border-[#ffedf0] rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-90 transition-all">
+             <span className="text-pink-500 text-xl">⬅️</span>
            </button>
            
            <div className="flex space-x-1">
@@ -356,10 +356,20 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
         </div>
         
         <div className="flex flex-col items-center">
-           <h2 className="text-5xl font-black text-gray-800 leading-none">{character.char}</h2>
-           <div className="flex items-center space-x-1 mt-1">
-              <span className="text-xl font-black text-[#f06292]">{lang === 'yue' ? character.jyutping : character.pinyin}</span>
-              <button onClick={speak} className="text-base hover:scale-110 active:scale-90 p-1">🔊</button>
+           <h2 className="text-6xl font-black text-gray-800 leading-none mb-1">{character.char}</h2>
+           <div className="flex items-center space-x-6 mt-1">
+              <div className="flex flex-col items-center">
+                <span className="text-xs font-bold text-gray-300 tracking-widest leading-none mb-1">{lang === 'yue' ? character.jyutping : character.pinyin}</span>
+                <span className="text-lg font-black text-pink-600 bg-pink-50 px-4 py-0.5 rounded-full border-2 border-pink-100 uppercase tracking-wide shadow-sm">
+                  {character.meaning}
+                </span>
+              </div>
+              <button 
+                onClick={speak} 
+                className="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-600 text-white rounded-full flex items-center justify-center text-3xl shadow-[0_6px_0_rgb(190,18,60)] border-4 border-white hover:scale-110 active:translate-y-1 active:shadow-none transition-all animate-pulse"
+              >
+                🔊
+              </button>
            </div>
         </div>
       </div>

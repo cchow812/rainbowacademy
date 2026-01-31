@@ -146,22 +146,6 @@ const AdminSection: React.FC<AdminSectionProps> = ({ lessons, onSave, onExit }) 
     }
   };
 
-  // AI Logic: Suggest Image URL
-  const handleRegenerateImage = async (lesson: Lesson) => {
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Suggest 1 single English keyword for an Unsplash image search for the lesson topic: "${lesson.title}". Respond with just the word.`
-      });
-      const keyword = response.text?.trim() || "education";
-      const newUrl = `https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?auto=format&fit=crop&q=80&w=800&q=${encodeURIComponent(keyword)}`;
-      updateLesson(lesson.id, { image: newUrl });
-    } catch (err) {
-      showAlert('失敗', '無法獲取新圖片關鍵字。');
-    }
-  };
-
   const saveChanges = () => {
     onSave(localLessons);
     showAlert('儲存成功', '所有課程內容已成功更新！');
@@ -426,12 +410,6 @@ const AdminSection: React.FC<AdminSectionProps> = ({ lessons, onSave, onExit }) 
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-gray-400">封面圖片 URL Image</label>
-                      <button 
-                        onClick={() => handleRegenerateImage(activeLesson)}
-                        className="text-[10px] font-black text-pink-500 hover:underline"
-                      >
-                        ✨ 智能推薦圖片
-                      </button>
                     </div>
                     <input 
                       type="text" value={activeLesson.image} onChange={(e) => updateLesson(activeLesson.id, { image: e.target.value })}

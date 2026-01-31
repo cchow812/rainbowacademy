@@ -40,9 +40,11 @@ const PictureMatchSection: React.FC<PictureMatchSectionProps> = ({ lesson, onBac
     if (isSuccess || isError) return;
     setSelectedChar(char);
     
+    // Pronounce the word even if it is incorrect
+    speak(char);
+    
     if (char === activeQuestion.correctChar) {
       setIsSuccess(true);
-      speak(char);
     } else {
       setIsError(true);
       setTimeout(() => {
