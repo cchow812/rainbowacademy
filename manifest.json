@@ -1,0 +1,22 @@
+
+{
+  "name": "Rainbow Brush Academy",
+  "short_name": "彩虹學堂",
+  "description": "Learn Traditional Chinese characters through tracing and games.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff9f0",
+  "theme_color": "#fbbf24",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?auto=format&fit=crop&q=80&w=192&h=192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?auto=format&fit=crop&q=80&w=512&h=512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

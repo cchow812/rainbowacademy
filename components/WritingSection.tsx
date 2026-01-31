@@ -160,43 +160,31 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
     }
   };
 
-  /**
-   * Deterministic Evaluation Logic:
-   * 1. Render the target character as a "mask" on a hidden canvas.
-   * 2. Compare the pixels of the user's drawing with the mask.
-   * 3. Calculate coverage percentage.
-   */
   const triggerEvaluation = async () => {
     if (!canvasRef.current) return;
     setIsVerifying(true);
 
-    // Short delay to show the "Verifying" state for UX
     await new Promise(r => setTimeout(r, 600));
 
     const canvas = canvasRef.current;
     const width = canvas.width;
     const height = canvas.height;
 
-    // Create a Reference Mask Canvas
     const refCanvas = document.createElement('canvas');
     refCanvas.width = width;
     refCanvas.height = height;
     const rCtx = refCanvas.getContext('2d', { willReadFrequently: true })!;
     
-    // Draw the character in the same spot as the guide
     rCtx.fillStyle = 'black';
     rCtx.textAlign = 'center';
     rCtx.textBaseline = 'middle';
-    // Use a bold font and a slightly larger size to give kids some tolerance
     rCtx.font = `normal 200px "Noto Sans TC", sans-serif`;
     rCtx.fillText(character.char, width / 2, height / 2);
     
-    // Create an expanded "Hit Zone" by adding a slight stroke
     rCtx.strokeStyle = 'black';
     rCtx.lineWidth = 15; 
     rCtx.strokeText(character.char, width / 2, height / 2);
 
-    // Get Pixel Data
     const refData = rCtx.getImageData(0, 0, width, height).data;
     const userCtx = canvas.getContext('2d', { willReadFrequently: true })!;
     const userData = userCtx.getImageData(0, 0, width, height).data;
@@ -204,12 +192,10 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
     let targetPixelCount = 0;
     let hitPixelCount = 0;
 
-    // Iterate through pixels (step by 4 for performance as we only need alpha/black)
     for (let i = 3; i < refData.length; i += 4) {
-      const isTarget = refData[i] > 10; // If mask has alpha
+      const isTarget = refData[i] > 10;
       if (isTarget) {
         targetPixelCount++;
-        // Check if user has drawn in this vicinity
         if (userData[i] > 10) {
           hitPixelCount++;
         }
@@ -218,14 +204,12 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
 
     const coverage = hitPixelCount / (targetPixelCount || 1);
     
-    // Threshold: 45% coverage is usually enough for a recognizable child's tracing
     if (coverage > 0.45) {
       setIsSuccess(true);
-      speak();
+      setTimeout(() => speak(), 100);
     } else {
       setPromptMsg("哎呀，好像還差一點點喔！再努力寫滿一點吧！💪");
       setTimeout(() => setPromptMsg(null), 3000);
-      // Give them a chance to keep drawing rather than clearing
     }
     
     setIsVerifying(false);
@@ -292,10 +276,26 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
   };
 
   const speak = () => {
-    window.speechSynthesis.cancel();
-    const s = new SpeechSynthesisUtterance(character.char);
-    s.lang = lang === 'yue' ? 'zh-HK' : 'zh-CN';
-    window.speechSynthesis.speak(s);
+    try {
+      window.speechSynthesis.cancel();
+      
+      const s = new SpeechSynthesisUtterance(character.char);
+      const targetLang = lang === 'yue' ? 'zh-HK' : 'zh-CN';
+      s.lang = targetLang;
+
+      // iOS 18 fix: Manually find a voice that matches the lang
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang.includes(targetLang));
+      if (voice) s.voice = voice;
+
+      // Essential for iOS: set volume and rate explicitly
+      s.volume = 1; 
+      s.rate = 1;
+
+      window.speechSynthesis.speak(s);
+    } catch (e) {
+      console.error("Speech error", e);
+    }
   };
 
   return (
@@ -364,14 +364,13 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
         </div>
       </div>
 
-      {/* Grid Area - Flexible for mobile heights */}
+      {/* Grid Area */}
       <div className="flex-1 w-full max-w-[400px] flex items-center justify-center p-4 relative overflow-hidden">
         <div 
           ref={containerRef} 
           className="chinese-grid relative w-full aspect-square max-h-full bg-white rounded-[2rem] border-[8px] border-[#ffcfd2] shadow-xl overflow-hidden"
           style={{ touchAction: 'none' }}
         >
-          {/* Faint Guide */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.05]">
             <span className="text-[200px] font-normal leading-none" style={{ fontFamily: 'Noto Sans TC' }}>{character.char}</span>
           </div>
@@ -384,7 +383,6 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
             className="absolute inset-0 z-20 cursor-crosshair touch-none"
           />
 
-          {/* Red Stroke Sequence Numbers */}
           <div className="absolute inset-0 z-40 pointer-events-none">
             <svg className="w-full h-full" viewBox="0 0 100 100">
               {(() => {
@@ -445,7 +443,6 @@ const WritingSection: React.FC<WritingSectionProps> = ({ character, onComplete, 
         </div>
       </div>
 
-      {/* Footer Controls - Compact for Mobile */}
       <div className="w-full max-w-md px-4 pb-6 flex flex-col space-y-2 shrink-0">
         {mode === 'RECORDING' ? (
           <div className="flex space-x-2 w-full h-14">

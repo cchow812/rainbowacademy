@@ -3,8 +3,17 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
+    <!-- Updated viewport for notch support -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Rainbow Brush Academy | 彩虹毛筆學堂</title>
+    
+    <!-- iOS PWA Configuration -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="彩虹學堂">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?auto=format&fit=crop&q=80&w=180&h=180">
+    <link rel="manifest" href="manifest.json">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -18,6 +27,12 @@
             overflow: hidden;
             font-family: var(--font-main);
             background-color: #fff9f0;
+            
+            /* Handle iOS Notch and Home Bar */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
         #root {
             height: 100%;
@@ -27,6 +42,22 @@
         h1, h2, h3, button {
             font-family: 'Fredoka', 'M PLUS Rounded 1c', sans-serif;
         }
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(251, 191, 36, 0.4);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(251, 191, 36, 0.6);
+        }
+
         /* Traditional Rice Grid (米字格) */
         .chinese-grid {
             position: relative;
@@ -81,7 +112,17 @@
         canvas {
             touch-action: none;
         }
+
+        /* Adjust UI for Standalone Mode */
+        .is-standalone header {
+            padding-top: 10px; /* Minor extra space when status bar is hidden */
+        }
     </style>
+    <script>
+        // Detection Script
+        window.isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+        if (window.isStandalone) document.documentElement.classList.add('is-standalone');
+    </script>
 <script type="importmap">
 {
   "imports": {

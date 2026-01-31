@@ -2,7 +2,10 @@
 export enum GameView {
   MAP = 'MAP',
   WRITING = 'WRITING',
-  STORY = 'STORY'
+  STORY = 'STORY',
+  PHRASE = 'PHRASE',
+  PICTURE_MATCH = 'PICTURE_MATCH',
+  ADMIN = 'ADMIN'
 }
 
 export interface StrokePoint {
@@ -14,7 +17,7 @@ export interface StrokeInfo {
   order: number;
   name: string;
   description: string;
-  path: StrokePoint[]; // Sequence of points defining the stroke curve
+  path: StrokePoint[]; 
 }
 
 export interface Character {
@@ -27,10 +30,26 @@ export interface Character {
   strokes?: StrokeInfo[];
 }
 
+export interface Phrase {
+  text: string;
+  meaning: string;
+  pinyin: string;
+  jyutping: string;
+}
+
+export interface MatchQuestion {
+  imageUrl: string;
+  correctChar: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
   characters: Character[];
+  phrases: Phrase[];
+  matchQuestions: MatchQuestion[];
+  enablePhrases: boolean;
+  enableMatch: boolean;
   image: string;
   unlocked: boolean;
 }
